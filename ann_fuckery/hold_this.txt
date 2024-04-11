@@ -1,0 +1,60 @@
+        # feed the input through the network forwards, recording relevant data...
+        output, weighted_sums, layer_outputs = self.feedforward(np.array(input))
+
+        # get the output layer weight changes
+        ldnj = self.functions[-1].get_output_loss_derivative(output, target_output)
+
+        delta = -1*ldnj
+        delta_w = self.eta * np.resize(ldnj, self.layer_sizes[-1]*self.layer_sizes[-2]) * layer_outputs[-2].repeat(self.layer_sizes[-1])
+
+        print(delta_w)
+        # change the output layer weights
+        self.weights[-1] = self.weights[-1] + delta_w
+
+        
+        # # for each hidden layer (backwards...)
+        for i in range(len(self.functions)- 2, -1, -1):
+            # # calculate partial derivative of the loss function with respect to the neuron outputs
+            ldnj = self.functions[i].get_hidden_loss_derivative(layer_outputs[i], delta, i, self)
+            delta = np.resize(-1*ldnj, self.layer_sizes[i]* self.layer_sizes[i + 1])
+
+            # corece previous function outputs to a similar shape
+            xij = layer_outputs[0].repeat(self.layer_sizes[i])
+
+            # update weights 
+            delta_w = self.eta*xij*delta
+            self.weights[i] = self.weights[i] + delta_w
+
+            # reset delta...
+            delta = -1*ldnj
+
+
+    def get_output_loss_derivative(self, output, target):
+        # calculates the partial derivative of sigmoid's loss function (oj) with respect to a weighted sum (netj)
+        # partial derivative of loss with respect to the output of a neuron
+        ldoj = -1*(target - output)
+        # partial derivative of output with respect to weigted sum
+        ojnj = output * (np.full(len(output), 1) - output)
+
+        # product is the correct derivative
+        return ldoj*ojnj
+    
+    def get_hidden_loss_derivative(self, output, previous_delta, curr_layer, ann):
+        # gets a hidden unit's partial derivative with respect to the output of the model
+        # for each j, get oj(1 - oj)
+        o_term = output * ((np.full(len(output), 1) - output))
+        o_term = o_term.repeat(ann.layer_sizes[curr_layer - 1])
+        
+        #resize delta to be the correct length
+        previous_delta = np.resize(previous_delta, ann.layer_sizes[curr_layer]*ann.layer_sizes[curr_layer + 1])
+        #print(previous_delta)
+        
+        # multiply these arrays element-wise
+        inter = o_term * previous_delta
+
+        # multiply these by the previous weights
+        inter = inter * ann.weights[curr_layer + 1]
+
+        # sum them based on shared k values
+        final_derivatives = np.resize(inter, (ann.layer_sizes[curr_layer + 1], ann.layer_sizes[curr_layer])).sum(axis=0)
+        return(final_derivatives)
