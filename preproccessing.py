@@ -11,5 +11,5 @@ for file in os.listdir("./data"):
 df_appended = pd.concat(dfs)
 
 # safe final csv file
-df_appended.to_csv("./data/full_data.csv")
+df_appended.to_csv("./data/LR_data.csv")
 
