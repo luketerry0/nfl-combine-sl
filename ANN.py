@@ -8,14 +8,33 @@ class Sigmoid():
     
     def derivative(self, x):
         return x * (1 - x)
+    
+# class encapsulating mean-squared-error loss
+class MSE_LOSS():
+    def loss(self, predicted_values, target_values):
+        return np.sum(0.5*np.square(np.array(predicted_values) - target_values))
+    
+    def error(self, _inputs, outputs):
+        # derivative of the loss....
+        return (_inputs - outputs) 
+    
+# class encapsulating a constant learning rate
+class CONSTANT_LEARNING_RATE():
+    def __init__(self, value):
+        self.learning_rate = value
+    def __call__(self, epoch):
+        return self.learning_rate
+
 
 
 # class encapsulating a neural network
 # matrix form of backpropigation implemented with mathematical help from https://sudeepraja.github.io/Neural/ rather than the book
 class ANN():
-    def __init__(self, dimensions: list[int], functions: list):
+    def __init__(self, dimensions: list[int], functions: list, loss_function, learning_rate_function):
         # learning rate
-        self.eta = 0.01
+        self.eta = learning_rate_function(1)
+        self.learning_rate_function = learning_rate_function
+        self.loss_function = loss_function
 
         # initalize weight matrices and bias vectors
         self.funs = functions
@@ -39,7 +58,7 @@ class ANN():
     
     def backwards_pass(self, target, fun_outputs):
             target = np.array([target]).T
-            deltas = [(fun_outputs[-1] - target) * self.funs[-1].derivative(fun_outputs[-1])]
+            deltas = [self.loss_function.error(fun_outputs[-1],  target)* self.funs[-1].derivative(fun_outputs[-1])]
 
             for i in range(len(self.dims) - 3, -1, -1):
                 # Calculate derivative of the activation function for the current layer
@@ -64,43 +83,59 @@ class ANN():
             # update biases....
             self.biases[i] -= delta[i]*self.eta
         
-    def getLoss(self, inputs):
-        losses = []
-        for _input in inputs:
-            result = self.forward_pass(_input)
-            losses.append(np.sum(0.5*np.square(np.array(_input) - result[-1])))
+        # return the training loss from this example
+        return self.loss_function.loss(input, fun_outs[-1])
         
-        return np.average(losses)
+    def predict(self, input):
+        return self.forward_pass(input)[-1]
+    
+    def train(self, epochs, training_inputs, training_outputs, test_inputs, test_outputs):
+        training_loss = []
+        test_loss = []
+        for epoch in range(epochs):
+            # update the learning rate (in case it is altered)
+            self.eta = self.learning_rate_function(epoch)
+
+            # train and return the average training and test loss
+            epoch_training_loss = []
+            epoch_test_loss = []
+            for i in range(len(training_inputs)):
+                ep_training_loss = self.backpropagate(training_inputs[i], training_outputs[i])
+                epoch_training_loss.append(ep_training_loss)
+
+            for i in range(len(test_inputs)):
+                ep_test_loss = self.loss_function.loss(self.predict(test_inputs[i]), test_outputs[i])
+                epoch_test_loss.append(ep_test_loss)
+
+            training_loss.append(np.mean(epoch_training_loss))
+            test_loss.append(np.mean(epoch_test_loss))
+
+        return [training_loss, test_loss]
+
+            
+        
 
 if __name__ == "__main__":
-    net = ANN([4, 2, 4], [Sigmoid(), Sigmoid()])
-    # net.backpropagate([1,0,0,0], [1,0,0,0])
-    # net.backpropagate([1,0,0,0], [1,0,0,0])
+    net = ANN([8, 3, 8], [Sigmoid(), Sigmoid(), Sigmoid()], MSE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
+
+    # build example dataset....
+    ds = []
+    for i in range(8):
+        datapoint = [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
+        datapoint[i] = 0.9
+        ds.append(datapoint)
+
 
     epochs = 50000
-    loss = []
-    for i in range(epochs):
-        inputs = []
-        for j in range(4):
-            ip = [0,0,0,0]
-            ip[j] = 1
-            inputs.append(ip)
-            net.backpropagate(ip, ip)
-        ls = net.getLoss(inputs)
-        loss.append(ls)
-    # print(net.forward_pass([1, 0,0,0]))
-    # print("-=")
-    # print(net.weights)
+    training_loss, test_loss = net.train(epochs, ds, ds, ds, ds)
 
-    #plt.plot(range(epochs), loss)
+    plt.plot(range(epochs), training_loss, label="loss")
 
-    #plt.show()
+    plt.show()
 
-    for i in range(4):
-        ip = [0,0,0,0]
-        ip[i] = 1
-        fun = net.forward_pass(ip)
-        print(fun[1])
+    for dp in ds:
+        fun = net.forward_pass(dp)
+        print(np.round(fun[1]).T)
     print("")
     
     

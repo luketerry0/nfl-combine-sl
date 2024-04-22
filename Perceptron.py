@@ -80,8 +80,6 @@ if __name__ == "__main__":
     np.random.shuffle(data) 
     training, test = data[:math.floor(len(data)*(1 - TEST_PROPORTION))], data[math.ceil(len(data)*(1 -TEST_PROPORTION)):]
 
-
-
     # run the data through a perceptron, evaluate the confusion matrix
 
     P = PERCEPTRON(len(training[0][:-1]), 0.1, pocket=False)
