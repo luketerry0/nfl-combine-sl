@@ -28,7 +28,7 @@ class Data():
         for split_point in split_points:
             curr_df = df.iloc[prev:(split_point + prev)]
             prev = split_point
-            datasets.append((curr_df.drop("Drafted", axis=1), curr_df["Drafted"]))
+            datasets.append((curr_df.drop("Drafted", axis=1).to_numpy(), curr_df["Drafted"].to_numpy()))
 
 
         return datasets

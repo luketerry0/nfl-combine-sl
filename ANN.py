@@ -12,7 +12,7 @@ class Sigmoid():
 # class encapsulating mean-squared-error loss
 class MSE_LOSS():
     def loss(self, predicted_values, target_values):
-        return np.sum(0.5*np.square(np.array(predicted_values) - target_values))
+        return np.mean(0.5*np.square((np.array(predicted_values) - target_values)))
     
     def error(self, _inputs, outputs):
         # derivative of the loss....
@@ -93,6 +93,7 @@ class ANN():
         training_loss = []
         test_loss = []
         for epoch in range(epochs):
+
             # update the learning rate (in case it is altered)
             self.eta = self.learning_rate_function(epoch)
 
@@ -100,7 +101,8 @@ class ANN():
             epoch_training_loss = []
             epoch_test_loss = []
             for i in range(len(training_inputs)):
-                ep_training_loss = self.backpropagate(training_inputs[i], training_outputs[i])
+                self.backpropagate(training_inputs[i], training_outputs[i])
+                ep_training_loss = self.loss_function.loss(self.predict(training_inputs[i]), training_outputs[i])
                 epoch_training_loss.append(ep_training_loss)
 
             for i in range(len(test_inputs)):
@@ -110,7 +112,22 @@ class ANN():
             training_loss.append(np.mean(epoch_training_loss))
             test_loss.append(np.mean(epoch_test_loss))
 
+
+            if epoch % 100 == 0:
+                print("completed %s epochs" % str(epoch))
+                print("TEST LOSS    : %s" % np.mean(epoch_test_loss))
+                print("TRAINING LOSS: %s" % np.mean(epoch_training_loss))
+                self.save(epochs)
+
+
         return [training_loss, test_loss]
+    
+    def save(self, epoch):
+        for i in range(len(self.weights)):
+            np.save("previously_trained/weights_%s_%s" % (epoch, i), self.weights[i])
+
+        for i in range(len(self.biases)):
+            np.save("previously_trained/biases_%s_%s" % (epoch, i), self.biases[i])
 
             
         
@@ -121,15 +138,17 @@ if __name__ == "__main__":
     # build example dataset....
     ds = []
     for i in range(8):
-        datapoint = [0.1,0.1,0.1,0.1,0.1,0.1,0.1,0.1]
-        datapoint[i] = 0.9
+        datapoint = [0,0,0,0,0,0,0,0]
+        datapoint[i] = 1
         ds.append(datapoint)
 
 
-    epochs = 50000
+    epochs = 2000
     training_loss, test_loss = net.train(epochs, ds, ds, ds, ds)
 
-    plt.plot(range(epochs), training_loss, label="loss")
+    plt.plot(range(epochs), training_loss, label="training_loss")
+    plt.plot(range(epochs), test_loss, label="test_loss")
+    plt.legend()
 
     plt.show()
 
