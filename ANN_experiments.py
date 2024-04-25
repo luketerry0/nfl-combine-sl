@@ -9,7 +9,7 @@ training_inputs, training_targets = training_set
 test_inputs, test_targets = test_set
 
 # create an ANN and train it on the data
-EPOCHS = 10000
+EPOCHS = 100000
 net = ANN([32, 10, 1], [Sigmoid(), Sigmoid(), Sigmoid()], MSE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
 training_loss, test_loss = net.train(EPOCHS, training_inputs=training_inputs, training_outputs=training_targets, test_inputs=test_inputs, test_outputs=test_targets)
 
