@@ -1,40 +1,19 @@
-import csv
+import pandas as pd
 
-# Function to convert height from feet-inches format to inches
-def height_to_inches(height):
-    if '-' in height:
-        feet, inches = height.split('-')
-        return int(feet) * 12 + int(inches)
-    else:
-        return int(height)  # Assuming height is already in inches
+# Read the submission and test data CSV files
+submission = pd.read_csv('submission.csv')
+test_data = pd.read_csv('testwithpick.csv')
 
-# Function to convert player position to number
-def position_to_number(position):
-    if position == "QB":
-        return 1
-    elif position == "WR":
-        return 2
-    elif position == "CB":
-        return 3
-    else:
-        return 4
+# Merge the submission and test data on the 'Index' column
+merged_data = pd.merge(submission, test_data, on='Index', suffixes=('_predicted', '_true'))
 
-# Read the original CSV file
-with open('LR_data.csv', 'r', newline='') as csvfile:
-    reader = csv.reader(csvfile)
-    header = next(reader)  # Read the header
-    data = []
-    for row in reader:
-        # Fill unfilled data points with 0's
-        row = [col if col else '0' for col in row]
-        # Convert player position to number
-        row[3] = position_to_number(row[3])
-        # Convert height to inches
-        row[4] = height_to_inches(row[4])
-        data.append(row)
+# Calculate the number of correct predictions
+num_correct_predictions = (merged_data['Pick_predicted'] == merged_data['Pick_true']).sum()
 
-# Write the updated data to a new CSV file
-with open('newLR_data.csv', 'w', newline='') as csvfile:
-    writer = csv.writer(csvfile)
-    writer.writerow(header)  # Write the header
-    writer.writerows(data)
+# Calculate the total number of predictions
+total_predictions = merged_data.shape[0]
+
+# Calculate the percentage of correct predictions
+percentage_correct = (num_correct_predictions / total_predictions) * 100
+
+print(f"Percentage of correct predictions: {percentage_correct:.2f}%")
