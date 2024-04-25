@@ -19,7 +19,7 @@ class Data():
         df = df.drop('Unnamed: 0', axis=1)
 
         # shuffle the data in place
-        df = df.sample(frac=1).reset_index(drop=True)
+        df = df.sample(frac=1, random_state=9347402).reset_index(drop=True) # seeded so I get the same random sample each time
 
         datasets = []
         split_points = [round(df.shape[0]*prop) for prop in proportions]

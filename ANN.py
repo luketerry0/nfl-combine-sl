@@ -9,6 +9,14 @@ class Sigmoid():
     def derivative(self, x):
         return x * (1 - x)
     
+# relu activation function
+class ReLU():
+    def activate(self, x):
+        return np.where(x>0,x,0)
+        
+    def derivative(self, x):
+        return np.where(x<=0,0,1)
+    
 # class encapsulating mean-squared-error loss
 class MSE_LOSS():
     def loss(self, predicted_values, target_values):
@@ -17,6 +25,15 @@ class MSE_LOSS():
     def error(self, _inputs, outputs):
         # derivative of the loss....
         return (_inputs - outputs) 
+
+# cross entropy loss
+class CE_LOSS():
+    def loss(self, predicted_values, target_values):
+        return -1*np.mean(target_values*np.log(predicted_values) + (1 - np.array(target_values))*np.log(1 - np.array(predicted_values)))
+    
+    def error(self, _inputs, outputs):
+        return -1*(np.array(outputs)/np.array(_inputs)) + ((1 - np.array(outputs))/(1 - np.array(_inputs)))
+
     
 # class encapsulating a constant learning rate
 class CONSTANT_LEARNING_RATE():
@@ -24,13 +41,29 @@ class CONSTANT_LEARNING_RATE():
         self.learning_rate = value
     def __call__(self, epoch):
         return self.learning_rate
+    
+# exponentially decaying learning rate
+class EXP_DECAY_LEARNING_RATE():
+    def __init__(self, init_learning_rate, decay_rate):
+        self.decay_rate = decay_rate
+        self.init_learning_rate = init_learning_rate
+    def __call__(self, epoch):
+        return (self.decay_rate**epoch)* self.init_learning_rate
 
+# slower decaying learning rate
+class DECAY_LEARNING_RATE():
+    def __init__(self, init_learning_rate, decay_rate):
+        self.decay_rate = decay_rate
+        self.init_learning_rate = init_learning_rate
+    def __call__(self, epoch):
+        return ((1/(1+self.decay_rate*epoch))*self.init_learning_rate)
 
 
 # class encapsulating a neural network
 # matrix form of backpropigation implemented with mathematical help from https://sudeepraja.github.io/Neural/ rather than the book
 class ANN():
-    def __init__(self, dimensions: list[int], functions: list, loss_function, learning_rate_function):
+    def __init__(self, dimensions: list[int], functions: list, loss_function, learning_rate_function, weights=False, biases=False, name=""):
+        self.name = name
         # learning rate
         self.eta = learning_rate_function(1)
         self.learning_rate_function = learning_rate_function
@@ -44,6 +77,11 @@ class ANN():
         for i in range(len(dimensions) - 1):
             self.weights.append(np.random.randn(dimensions[i + 1], dimensions[i]))
             self.biases.append(np.array([np.zeros(dimensions[i + 1])]).T)
+
+        # overwrite the weights and biases if some are passed
+        if weights and biases:
+            self.weights = weights
+            self.biases = biases
 
 
     def forward_pass(self, input: list[float]):
@@ -122,29 +160,51 @@ class ANN():
 
         return [training_loss, test_loss]
     
+    def confusion_matrix(self, x: np.array, y: np.array):
+        # makes a confusion matrix based on the passed x and y
+        # assumes that we are only doing binary classification...
+        cm = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
+        print(y[0])
+        for i in range(len(x)):
+            prediction = round(self.predict(x[i])[0][0])
+            if prediction == 1:
+                if y[i] == 1:
+                    cm["tp"] += 1
+                else:
+                    cm["fp"] += 1
+            else:
+                if y[i] == 1:
+                    cm["fn"] += 1
+                else:
+                    cm["tn"] += 1
+        return cm
+            
+    
     def save(self, epoch):
         for i in range(len(self.weights)):
-            np.save("previously_trained/weights_%s_%s" % (epoch, i), self.weights[i])
+            np.save("previously_trained/weights_%s_%s_%s" % (epoch, i, self.name), self.weights[i])
 
         for i in range(len(self.biases)):
-            np.save("previously_trained/biases_%s_%s" % (epoch, i), self.biases[i])
+            np.save("previously_trained/biases_%s_%s_%s" % (epoch, i, self.name), self.biases[i])
 
             
         
 
 if __name__ == "__main__":
-    net = ANN([8, 3, 8], [Sigmoid(), Sigmoid(), Sigmoid()], MSE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
+    net = ANN([8, 3, 1], [Sigmoid(), Sigmoid()], CE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
 
     # build example dataset....
     ds = []
+    dy = []
     for i in range(8):
         datapoint = [0,0,0,0,0,0,0,0]
         datapoint[i] = 1
+        dy.append(i % 2)
         ds.append(datapoint)
 
 
-    epochs = 2000
-    training_loss, test_loss = net.train(epochs, ds, ds, ds, ds)
+    epochs = 200
+    training_loss, test_loss = net.train(epochs, ds, dy, ds, dy)
 
     plt.plot(range(epochs), training_loss, label="training_loss")
     plt.plot(range(epochs), test_loss, label="test_loss")
@@ -155,6 +215,9 @@ if __name__ == "__main__":
     for dp in ds:
         fun = net.forward_pass(dp)
         print(np.round(fun[1]).T)
+
+    print("")
+    print(net.confusion_matrix(ds, dy))
     print("")
     
     
