@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import math
 import numpy as np
 from preproccessing import Data
-from imblearn.over_sampling import SMOTE
 # https://imbalanced-learn.org/stable/references/generated/imblearn.over_sampling.SMOTE.html
 
 class PERCEPTRON():

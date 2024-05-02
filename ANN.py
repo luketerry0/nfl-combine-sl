@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 # class encapsulating the sigmoid function
 class Sigmoid():
     def activate(self, x):
-        return 1 / (1 + np.exp(-x))
+        return 1 / (1 + np.exp(-x)) #1*np.float128(x)
     
     def derivative(self, x):
         return x * (1 - x)
@@ -127,7 +127,7 @@ class ANN():
     def predict(self, input):
         return self.forward_pass(input)[-1]
     
-    def train(self, epochs, training_inputs, training_outputs, test_inputs, test_outputs):
+    def train(self, epochs, training_inputs, training_outputs, test_inputs, test_outputs, verbose = True):
         training_loss = []
         test_loss = []
         for epoch in range(epochs):
@@ -151,10 +151,11 @@ class ANN():
             test_loss.append(np.mean(epoch_test_loss))
 
 
-            if epoch % 100 == 0:
-                print("completed %s epochs" % str(epoch))
-                print("TEST LOSS    : %s" % np.mean(epoch_test_loss))
-                print("TRAINING LOSS: %s" % np.mean(epoch_training_loss))
+            if epoch % 50 == 0:
+                if verbose:
+                    print("completed %s epochs" % str(epoch))
+                    print("TEST LOSS    : %s" % np.mean(epoch_test_loss))
+                    print("TRAINING LOSS: %s" % np.mean(epoch_training_loss))
                 self.save(epochs)
 
 
