@@ -160,13 +160,12 @@ class ANN():
 
         return [training_loss, test_loss]
     
-    def confusion_matrix(self, x: np.array, y: np.array):
+    def confusion_matrix(self, x: np.array, y: np.array, threshold = 0.5):
         # makes a confusion matrix based on the passed x and y
         # assumes that we are only doing binary classification...
         cm = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
-        print(y[0])
         for i in range(len(x)):
-            prediction = round(self.predict(x[i])[0][0])
+            prediction = np.where(self.predict(x[i])[0][0] > threshold, 1, 0)
             if prediction == 1:
                 if y[i] == 1:
                     cm["tp"] += 1
@@ -179,6 +178,31 @@ class ANN():
                     cm["tn"] += 1
         return cm
             
+    def ROC_curve(self, x: np.array, y: np.array):
+        tpr = []
+        fpr = []
+        predictions = np.array([self.predict(x[i])[0][0] for i in range(len(x))])
+        x = np.array(x)
+        y = np.array(y)
+        for i in range(1000):
+            threshold = i/1000
+            curr_predictions = np.where(predictions > threshold, 1, 0)
+            tp = np.sum((curr_predictions == y) & (y == 1))
+            tn = np.sum((curr_predictions == y) & (y != 1))
+            fp = np.sum((curr_predictions != y) & (y != 1))
+            fn = np.sum((curr_predictions != y) & (y == 1))
+
+
+            tpr.append(tp/(tp + fn))
+            fpr.append(fp/(fp + tn))
+
+        plt.plot(fpr, tpr, color="blue")
+        plt.title("ROC Curve")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.plot(np.array([0,1]), np.array([0,1]), label="Random Predictor", linestyle='dashed', color='grey')
+        plt.show()
+
     
     def save(self, epoch):
         for i in range(len(self.weights)):
@@ -191,7 +215,7 @@ class ANN():
         
 
 if __name__ == "__main__":
-    net = ANN([8, 3, 1], [Sigmoid(), Sigmoid()], CE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
+    net = ANN([8, 3, 3, 3, 1], [ReLU(), ReLU(), ReLU(), Sigmoid()], MSE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
 
     # build example dataset....
     ds = []
@@ -203,18 +227,20 @@ if __name__ == "__main__":
         ds.append(datapoint)
 
 
-    epochs = 200
+    epochs = 500
     training_loss, test_loss = net.train(epochs, ds, dy, ds, dy)
 
-    plt.plot(range(epochs), training_loss, label="training_loss")
-    plt.plot(range(epochs), test_loss, label="test_loss")
-    plt.legend()
+    # plt.plot(range(epochs), training_loss, label="training_loss")
+    # plt.plot(range(epochs), test_loss, label="test_loss")
+    # plt.legend()
 
-    plt.show()
+    # plt.show()
 
     for dp in ds:
         fun = net.forward_pass(dp)
         print(np.round(fun[1]).T)
+
+    net.ROC_curve(ds, dy)
 
     print("")
     print(net.confusion_matrix(ds, dy))
