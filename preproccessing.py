@@ -3,7 +3,7 @@ import os
 
 # class to let me easily get clean data from the different datasets
 class Data():
-    def get_data(na_treatment = "zeroed", exclude = [], proportions = [0.9, 0.1]):
+    def get_data(na_treatment = "zeroed", exclude = [], proportions = [0.9, 0.1], standard = False):
         data_path = ""
         if na_treatment == "zeroed":
             data_path = "./data/data_null_values_0.csv"
@@ -28,7 +28,11 @@ class Data():
         for split_point in split_points:
             curr_df = df.iloc[prev:(split_point + prev)]
             prev = split_point
-            datasets.append((curr_df.drop("Drafted", axis=1).to_numpy(), curr_df["Drafted"].to_numpy()))
+            inputs = curr_df.drop("Drafted", axis=1).to_numpy()
+            if standard:
+                inputs = (inputs-inputs.mean())/inputs.std()
+            
+            datasets.append((inputs, curr_df["Drafted"].to_numpy()))
 
 
         return datasets

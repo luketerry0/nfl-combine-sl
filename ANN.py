@@ -4,7 +4,14 @@ import matplotlib.pyplot as plt
 # class encapsulating the sigmoid function
 class Sigmoid():
     def activate(self, x):
-        return 1 / (1 + np.exp(-x))
+            precision = 1e-10
+            response = 1 / (1 + np.exp(-x))
+            if response[0][0] == 0:
+                return np.array([[precision]])
+            elif response[0][0] == 1:
+                return np.array([[1 - precision]])
+            else:
+                return response
     
     def derivative(self, x):
         return x * (1 - x)
@@ -29,10 +36,19 @@ class MSE_LOSS():
 # cross entropy loss
 class CE_LOSS():
     def loss(self, predicted_values, target_values):
-        return -1*np.mean(target_values*np.log(predicted_values) + (1 - np.array(target_values))*np.log(1 - np.array(predicted_values)))
+        predicted_values = np.array(predicted_values)
+        target_values = np.array(target_values)
+
+        # print(target_values)
+        # print(predicted_values)
+        # print(-1*np.sum(target_values * np.log(predicted_values) + (1 - target_values) * np.log(1 - predicted_values)))
+
+        # raise "TOP"
+
+        return -1*np.sum(target_values * np.log(predicted_values) + (1 - target_values) * np.log(1 - predicted_values))
     
     def error(self, _inputs, outputs):
-        return -1*(np.array(outputs)/np.array(_inputs)) + ((1 - np.array(outputs))/(1 - np.array(_inputs)))
+        return -1*(outputs - _inputs)
 
     
 # class encapsulating a constant learning rate
@@ -122,7 +138,7 @@ class ANN():
             self.biases[i] -= delta[i]*self.eta
         
         # return the training loss from this example
-        return self.loss_function.loss(input, fun_outs[-1])
+        #return self.loss_function.loss(fun_outs[-1], input)
         
     def predict(self, input):
         return self.forward_pass(input)[-1]
@@ -164,7 +180,6 @@ class ANN():
         # makes a confusion matrix based on the passed x and y
         # assumes that we are only doing binary classification...
         cm = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
-        print(y[0])
         for i in range(len(x)):
             prediction = round(self.predict(x[i])[0][0])
             if prediction == 1:
@@ -191,7 +206,7 @@ class ANN():
         
 
 if __name__ == "__main__":
-    net = ANN([8, 3, 1], [Sigmoid(), Sigmoid()], CE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
+    net = ANN([8, 3, 3, 1], [ReLU(), ReLU(), Sigmoid()], CE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
 
     # build example dataset....
     ds = []
@@ -203,7 +218,7 @@ if __name__ == "__main__":
         ds.append(datapoint)
 
 
-    epochs = 200
+    epochs = 3000
     training_loss, test_loss = net.train(epochs, ds, dy, ds, dy)
 
     plt.plot(range(epochs), training_loss, label="training_loss")
@@ -217,8 +232,10 @@ if __name__ == "__main__":
         print(np.round(fun[1]).T)
 
     print("")
-    print(net.confusion_matrix(ds, dy))
+    cm = net.confusion_matrix(ds, dy)
+    print(cm)
     print("")
+    print("Accuracy: %s" % str((cm["tp"] + cm["tn"])/(cm["tp"] + cm["fp"] + cm["tn"] + cm["fn"])))
     
     
     # print(net.weights)
