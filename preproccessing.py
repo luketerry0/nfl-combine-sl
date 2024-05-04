@@ -3,7 +3,7 @@ import os
 
 # class to let me easily get clean data from the different datasets
 class Data():
-    def get_data(na_treatment = "zeroed", exclude = [], proportions = [0.9, 0.1]):
+    def get_data(na_treatment = "zeroed", exclude = [], proportions = [0.9, 0.1], standard = False, negative_falses = False, seed=9347402):
         data_path = ""
         if na_treatment == "zeroed":
             data_path = "./data/data_null_values_0.csv"
@@ -19,7 +19,7 @@ class Data():
         df = df.drop('Unnamed: 0', axis=1)
 
         # shuffle the data in place
-        df = df.sample(frac=1).reset_index(drop=True)
+        df = df.sample(frac=1, random_state=seed).reset_index(drop=True) # seeded so I get the same random sample each time
 
         datasets = []
         split_points = [round(df.shape[0]*prop) for prop in proportions]
@@ -28,7 +28,15 @@ class Data():
         for split_point in split_points:
             curr_df = df.iloc[prev:(split_point + prev)]
             prev = split_point
-            datasets.append((curr_df.drop("Drafted", axis=1).to_numpy(), curr_df["Drafted"].to_numpy()))
+
+            x = curr_df.drop("Drafted", axis=1)
+            if standard:
+                x = (x-x.mean())/x.std()
+            if negative_falses:
+                curr_df["Drafted"][curr_df["Drafted"] == 0] = -1
+                datasets.append((x.to_numpy(), curr_df["Drafted"].to_numpy()))
+            else:
+                datasets.append((x.to_numpy(), curr_df["Drafted"].to_numpy()))
 
 
         return datasets

@@ -4,10 +4,18 @@ import matplotlib.pyplot as plt
 # class encapsulating the sigmoid function
 class Sigmoid():
     def activate(self, x):
-        return 1 / (1 + np.exp(-x))
+        return 1 / (1 + np.exp(-1*np.float128(x))) #1
     
     def derivative(self, x):
         return x * (1 - x)
+    
+# relu activation function
+class ReLU():
+    def activate(self, x):
+        return np.where(x>0,x,0)
+        
+    def derivative(self, x):
+        return np.where(x<=0,0,1)
     
 # class encapsulating mean-squared-error loss
 class MSE_LOSS():
@@ -17,6 +25,24 @@ class MSE_LOSS():
     def error(self, _inputs, outputs):
         # derivative of the loss....
         return (_inputs - outputs) 
+
+# cross entropy loss
+class CE_LOSS():
+    def loss(self, predicted_values, target_values):
+        predicted_values = np.array(predicted_values)
+        target_values = np.array(target_values)
+
+        # print(target_values)
+        # print(predicted_values)
+        # print(-1*np.sum(target_values * np.log(predicted_values) + (1 - target_values) * np.log(1 - predicted_values)))
+
+        # raise "TOP"
+
+        return -1*np.sum(target_values * np.log(predicted_values) + (1 - target_values) * np.log(1 - predicted_values))
+    
+    def error(self, _inputs, outputs):
+        return -1*(outputs - _inputs)
+
     
 # class encapsulating a constant learning rate
 class CONSTANT_LEARNING_RATE():
@@ -24,13 +50,29 @@ class CONSTANT_LEARNING_RATE():
         self.learning_rate = value
     def __call__(self, epoch):
         return self.learning_rate
+    
+# exponentially decaying learning rate
+class EXP_DECAY_LEARNING_RATE():
+    def __init__(self, init_learning_rate, decay_rate):
+        self.decay_rate = decay_rate
+        self.init_learning_rate = init_learning_rate
+    def __call__(self, epoch):
+        return (self.decay_rate**epoch)* self.init_learning_rate
 
+# slower decaying learning rate
+class DECAY_LEARNING_RATE():
+    def __init__(self, init_learning_rate, decay_rate):
+        self.decay_rate = decay_rate
+        self.init_learning_rate = init_learning_rate
+    def __call__(self, epoch):
+        return ((1/(1+self.decay_rate*epoch))*self.init_learning_rate)
 
 
 # class encapsulating a neural network
 # matrix form of backpropigation implemented with mathematical help from https://sudeepraja.github.io/Neural/ rather than the book
 class ANN():
-    def __init__(self, dimensions: list[int], functions: list, loss_function, learning_rate_function):
+    def __init__(self, dimensions: list[int], functions: list, loss_function, learning_rate_function, weights=False, biases=False, name=""):
+        self.name = name
         # learning rate
         self.eta = learning_rate_function(1)
         self.learning_rate_function = learning_rate_function
@@ -44,6 +86,11 @@ class ANN():
         for i in range(len(dimensions) - 1):
             self.weights.append(np.random.randn(dimensions[i + 1], dimensions[i]))
             self.biases.append(np.array([np.zeros(dimensions[i + 1])]).T)
+
+        # overwrite the weights and biases if some are passed
+        if weights and biases:
+            self.weights = weights
+            self.biases = biases
 
 
     def forward_pass(self, input: list[float]):
@@ -84,12 +131,12 @@ class ANN():
             self.biases[i] -= delta[i]*self.eta
         
         # return the training loss from this example
-        return self.loss_function.loss(input, fun_outs[-1])
+        #return self.loss_function.loss(fun_outs[-1], input)
         
     def predict(self, input):
         return self.forward_pass(input)[-1]
     
-    def train(self, epochs, training_inputs, training_outputs, test_inputs, test_outputs):
+    def train(self, epochs, training_inputs, training_outputs, test_inputs, test_outputs, verbose = True):
         training_loss = []
         test_loss = []
         for epoch in range(epochs):
@@ -113,49 +160,103 @@ class ANN():
             test_loss.append(np.mean(epoch_test_loss))
 
 
-            if epoch % 100 == 0:
-                print("completed %s epochs" % str(epoch))
-                print("TEST LOSS    : %s" % np.mean(epoch_test_loss))
-                print("TRAINING LOSS: %s" % np.mean(epoch_training_loss))
+            if epoch % 50 == 0:
+                if verbose:
+                    print("completed %s epochs" % str(epoch))
+                    print("TEST LOSS    : %s" % np.mean(epoch_test_loss))
+                    print("TRAINING LOSS: %s" % np.mean(epoch_training_loss))
                 self.save(epochs)
 
 
         return [training_loss, test_loss]
     
+    def confusion_matrix(self, x: np.array, y: np.array, threshold = 0.5):
+        # makes a confusion matrix based on the passed x and y
+        # assumes that we are only doing binary classification...
+        cm = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
+        for i in range(len(x)):
+            prediction = np.where(self.predict(x[i])[0][0] > threshold, 1, 0)
+            if prediction == 1:
+                if y[i] == 1:
+                    cm["tp"] += 1
+                else:
+                    cm["fp"] += 1
+            else:
+                if y[i] == 1:
+                    cm["fn"] += 1
+                else:
+                    cm["tn"] += 1
+        return cm
+            
+    def ROC_curve(self, x: np.array, y: np.array):
+        tpr = []
+        fpr = []
+        predictions = np.array([self.predict(x[i])[0][0] for i in range(len(x))])
+        x = np.array(x)
+        y = np.array(y)
+        for i in range(1000):
+            threshold = i/1000
+            curr_predictions = np.where(predictions > threshold, 1, 0)
+            tp = np.sum((curr_predictions == y) & (y == 1))
+            tn = np.sum((curr_predictions == y) & (y != 1))
+            fp = np.sum((curr_predictions != y) & (y != 1))
+            fn = np.sum((curr_predictions != y) & (y == 1))
+
+
+            tpr.append(tp/(tp + fn))
+            fpr.append(fp/(fp + tn))
+
+        plt.plot(fpr, tpr, color="blue")
+        plt.title("ROC Curve")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.plot(np.array([0,1]), np.array([0,1]), label="Random Predictor", linestyle='dashed', color='grey')
+        plt.show()
+
+    
     def save(self, epoch):
         for i in range(len(self.weights)):
-            np.save("previously_trained/weights_%s_%s" % (epoch, i), self.weights[i])
+            np.save("previously_trained/weights_%s_%s_%s" % (epoch, i, self.name), self.weights[i])
 
         for i in range(len(self.biases)):
-            np.save("previously_trained/biases_%s_%s" % (epoch, i), self.biases[i])
+            np.save("previously_trained/biases_%s_%s_%s" % (epoch, i, self.name), self.biases[i])
 
             
         
 
 if __name__ == "__main__":
-    net = ANN([8, 3, 8], [Sigmoid(), Sigmoid(), Sigmoid()], MSE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
+    net = ANN([8, 3, 3, 3, 1], [ReLU(), ReLU(), ReLU(), Sigmoid()], MSE_LOSS(), CONSTANT_LEARNING_RATE(0.01))
 
     # build example dataset....
     ds = []
+    dy = []
     for i in range(8):
         datapoint = [0,0,0,0,0,0,0,0]
         datapoint[i] = 1
+        dy.append(i % 2)
         ds.append(datapoint)
 
 
-    epochs = 2000
-    training_loss, test_loss = net.train(epochs, ds, ds, ds, ds)
+    epochs = 500
+    training_loss, test_loss = net.train(epochs, ds, dy, ds, dy)
 
-    plt.plot(range(epochs), training_loss, label="training_loss")
-    plt.plot(range(epochs), test_loss, label="test_loss")
-    plt.legend()
+    # plt.plot(range(epochs), training_loss, label="training_loss")
+    # plt.plot(range(epochs), test_loss, label="test_loss")
+    # plt.legend()
 
-    plt.show()
+    # plt.show()
 
     for dp in ds:
         fun = net.forward_pass(dp)
         print(np.round(fun[1]).T)
+
+    net.ROC_curve(ds, dy)
+
     print("")
+    cm = net.confusion_matrix(ds, dy)
+    print(cm)
+    print("")
+    print("Accuracy: %s" % str((cm["tp"] + cm["tn"])/(cm["tp"] + cm["fp"] + cm["tn"] + cm["fn"])))
     
     
     # print(net.weights)
