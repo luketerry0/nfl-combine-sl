@@ -18,7 +18,7 @@ if smote:
 
 # parameters for this genetic approach...
 pop_size = 100
-max_size_of_layer = 40
+max_size_of_layer = 50
 max_num_hidden_layers = 2
 num_to_retain = 20
 allowed_activation_functions = [Sigmoid, ReLU]
@@ -61,7 +61,7 @@ def offspring(mother, father, member):
 
 # randomly change individual dimensions or functions with a small probability
 def mutate(ann):
-    if randint(0, 50) == 1:
+    if randint(0, 25) == 1:
         print("Mutated!")
         n_hidden_dims = len(ann.dims) - 2
         mutated_prop = randint(0, 3)
@@ -106,7 +106,7 @@ for gen in range(NUM_GENERATIONS):
     # evolve the generation
     ranked = [(fitness_function(x), x) for x in population]
     best_acc = max(ranked, key=lambda x:x[0])
-    ranked = [x[1] for x in sorted(ranked, key=lambda x: x[0])]
+    ranked = [x[1] for x in sorted(ranked, key=lambda x: x[0], reverse=True)]
 
     parents = ranked[:num_to_retain]
     children = []
@@ -124,7 +124,7 @@ for gen in range(NUM_GENERATIONS):
     
 # save the best neural net
 ranked = [(fitness_function(x), x) for x in population]
-ranked = [x[1] for x in sorted(ranked, key=lambda x: x[0])]
+ranked = [x[1] for x in sorted(ranked, key=lambda x: x[0], reverse=True)]
 [np.save("./winning_weights_%s" % i, ranked[0].weights[i]) for i in range(len(ranked[0].weights))]
 [np.save("./winning_biases_%s" % i, ranked[0].biases[i]) for i in range(len(ranked[0].biases))]
 
