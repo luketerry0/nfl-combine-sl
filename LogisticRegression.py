@@ -124,7 +124,7 @@ test_data = pd.read_csv('test_without_pick.csv')
 Y_train = train_data['Pick']
 Y_test_Index = test_data['Index'] 
 
-features = ['Pos', 'Ht', 'Wt', 'Forty', 'Vertical', 'BenchReps', 'BroadJump', 'Cone', 'Shuttle']
+features = ['Forty', 'Vertical', 'BenchReps', 'BroadJump', 'Cone', 'Shuttle']
 train_data = train_data[features]
 test_data = test_data[features]
 
@@ -141,7 +141,7 @@ X_test = np.array(test_data).T
 assert X_train.shape[1] == Y_train.shape[1]
 assert X_train.shape[0] == X_test.shape[0]
 
-Y_train_pred, Y_test_pred, w_opt, b_opt, costs = build_model(X_train, Y_train, X_test, num_iters=50000, learning_rate=0.001, print_cost=True)
+Y_train_pred, Y_test_pred, w_opt, b_opt, costs = build_model(X_train, Y_train, X_test, num_iters=500000, learning_rate=0.001, print_cost=True)
 
 # Plot learning curve
 plt.plot(np.squeeze(costs))
@@ -151,8 +151,8 @@ plt.title("Learning rate =" + str(0.001))
 plt.show()
 
 # Save submission
-submission = pd.DataFrame({
+prediction = pd.DataFrame({
         "Index": Y_test_Index,
         "Pick": Y_test_pred.T.flatten().astype(int)
     })
-submission.to_csv('submission.csv', index=False)
+prediction.to_csv('prediction.csv', index=False)
